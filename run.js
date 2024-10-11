@@ -237,7 +237,7 @@ function launchWalletService() {
     walletGen.once('generate', () => {
         console.log("\x1b[33m=== GENERATE WALLET ===\x1b[0m");
         walletGen.once('mnemonic', (mnemonic) => {
-            console.log("\x1b[42m SUCCESS \x1b[0m Your mnemonic phrase is:\x1b[32m %s \x1b[0m", mnemonic.phrase);
+            console.log("\x1b[42m SUCCESS \x1b[0m Your mnemonic phrase is:\x1b[40m\x1b[32m %s \x1b[0m", mnemonic.phrase);
             console.log("\x1b[44m IMPORTANT \x1b[0m The mnemonic is the only way you can recover your wallet! Write the mnemonic phrase down on a piece of paper, keep it in a safe place and DO NOT SHARE with anyone!")
             walletGen.clearOnEnter(true);
         });
@@ -247,7 +247,7 @@ function launchWalletService() {
             walletGen.listen();
         });
         walletGen.once('valid', async (wallet) => {
-            Logger.Log("\x1b[42m SUCCESS \x1b[0m Run 'node run.js --test' to proceed to the next step");
+            console.log("\x1b[42m SUCCESS \x1b[0m Run 'node run.js --test' to proceed to the next step");
             await LocalVariable.setEncrypted("pkey", wallet.privateKey);
             process.exitCode = 0;
         });
@@ -262,7 +262,7 @@ function launchWalletService() {
         console.log("\x1b[33m=== IMPORT WALLET ===\x1b[0m");
         walletGen.importWallet();
         walletGen.once('success', async (wallet) => {
-            Logger.Log("\x1b[42m SUCCESS \x1b[0m Run 'node run.js --test' to proceed to the next step");
+            console.log("\x1b[42m SUCCESS \x1b[0m Run 'node run.js --test' to proceed to the next step");
             await LocalVariable.setEncrypted("pkey", wallet.privateKey);
             process.exitCode = 0;
         });
@@ -273,7 +273,7 @@ function launchWalletService() {
     });
 }
 async function setupWallet() {
-    console.log("\x1b[41m ERROR \x1b[0m \x1b[31m No wallet found and SIGNER_PRIVATE_KEY not set in .env file! \x1b[0m");
+    console.log("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m No wallet found and SIGNER_PRIVATE_KEY not set in .env file! \x1b[0m");
     console.log("\x1b[33m Option 1: Press keyboard [W] to start the wallet setup (recommended) \x1b[0m");
     console.log("\x1b[33m Option 2: Press keyboard [I] to learn how to import a private key (for advanced users) \x1b[0m");
     console.log("or press keyboard [Q] to quit");
@@ -309,14 +309,14 @@ function runTest() {
         if (avaxAmount > 0n) {
             console.log("\x1b[42m TEST SUCCESSFULL \x1b[0m type \x1b[36mnode run.js --mine\x1b[0m to start mining");
         } else {
-            console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[31m 0 AVAX for address %s. Consider deposit some AVAX (Avalanche C Chain) to your address to start mining! \x1b[0m", signer.address);
+            console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[40m\x1b[31m 0 AVAX for address %s. Consider deposit some AVAX (Avalanche C Chain) to your address to start mining! \x1b[0m", signer.address);
         }
         process.exit(0);
         
     });
     avaxBalanceGetter.on('error', (error) => {
         if (error instanceof ConnectionNotOpenError) {
-            console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[31m No internet connection or wrong Infura Api Key! \x1b[0m");
+            console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[40m\x1b[31m No internet connection or wrong Infura Api Key! \x1b[0m");
         } else {
             console.log("\x1b[41m TEST FAILED \x1b[0m");
         }
@@ -335,7 +335,7 @@ function isValidSalt(salt){
 }
 function processArgv() {
     if (process.argv[2] !== "--mine" && process.argv[2] !== "--seal" && process.argv[2] !== "--test" && process.argv[2] !== "--wallet") {
-        console.log("\x1b[31m Error! Expected --mine, --seal, --test or --wallet command \x1b[0m");
+        console.log("\x1b[40m\x1b[31m Error! Expected --mine, --seal, --test or --wallet command \x1b[0m");
         return false;
     }
     const argv = minimist(process.argv.slice(2), { string: ['address', 'salt'], boolean: ['DEBUG']});
@@ -347,11 +347,11 @@ function processArgv() {
         try {
             blockId = parseInt(argv.seal);
         } catch (error) {
-            console.log("\x1b[31m Seal Error! \x1b[0m");
+            console.log("\x1b[40m\x1b[31m Seal Error! \x1b[0m");
             process.exit(1);
         }
         if (isNaN(blockId)) {
-            console.log("\x1b[31m Error: Seal is not a number! \x1b[0m");
+            console.log("\x1b[40m\x1b[31m Error: Seal is not a number! \x1b[0m");
             process.exit(1);
         }
         argSealBlockId = blockId;
@@ -373,14 +373,14 @@ function processArgv() {
     } else {
         argDifficulty = parseInt(argv.difficulty);
         if (argDifficulty < MIN_DIFFICULTY) {
-            console.log("\x1b[41m ERROR \x1b[0m \x1b[31m Difficulty too low \x1b[0m");
+            console.log("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Difficulty too low \x1b[0m");
             return false;
         }
     }
     // --address
     if (argv.address !== undefined && argv.address !== "") {
         if (!isAddress(argv.address)) {
-            console.error("\x1b[41m ERROR \x1b[0m \x1b[31m Provided --address argument is not a valid Avalanche/Ethereum address! \x1b[0m");
+            console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Provided --address argument is not a valid Avalanche/Ethereum address! \x1b[0m");
             return false;
         }
         argAddress = argv.address;

@@ -23,7 +23,7 @@ var signer = null;
 
 async function __main() {
   if (process.argv[2] !== "--transfer" && process.argv[2] !== "--balance") {
-    console.log("\x1b[31m Error! Expected --transfer, or --balance command \x1b[0m");
+    console.log("\x1b[40m\x1b[31m Error! Expected --transfer, or --balance command \x1b[0m");
     process.exit(1);
   }
   const argv = minimist(process.argv.slice(2), { string:['to', 'address'], boolean: ['DEBUG']});
@@ -31,7 +31,7 @@ async function __main() {
 
   signer = await solveSigner(web3);
   if (signer == null || signer == false) {
-    console.log("\x1b[41m ERROR \x1b[0m \x1b[31m Run 'node run.js --test' for details\x1b[0m");
+    console.log("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Run 'node run.js --test' for details\x1b[0m");
     process.exitCode = 1;
     return;
   }
@@ -41,7 +41,7 @@ async function __main() {
     let address;
     if (argv.address !== undefined && argv.address !== '') {
       if (!isAddress(argv.address)) {
-        console.error("\x1b[41m ERROR \x1b[0m \x1b[31m Provided --address argument is not a valid Avalanche/Ethereum address! \x1b[0m");
+        console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Provided --address argument is not a valid Avalanche/Ethereum address! \x1b[0m");
         process.exit(1);
       }
       address = argv.address;
@@ -55,13 +55,13 @@ async function __main() {
   // TRANSFER
   if (argv.transfer !== undefined) {
     if (argv.to === undefined || argv.amount === undefined) {
-      console.error("\x1b[41m ERROR \x1b[0m \x1b[31m Expected --to and --amount arguments! \x1b[0m");
+      console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Expected --to and --amount arguments! \x1b[0m");
       process.exit(1);
     }
     let to;
     let amount = 0n;
     if (!isAddress(argv.to)) {
-      console.error("\x1b[41m ERROR \x1b[0m \x1b[31m Provided --to argument is not a valid Avalanche/Ethereum address! \x1b[0m");
+      console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Provided --to argument is not a valid Avalanche/Ethereum address! \x1b[0m");
       process.exit(1);
     }
     to = argv.to;

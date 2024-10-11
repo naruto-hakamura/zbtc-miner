@@ -100,6 +100,9 @@ export class ZMiner extends EventEmitter {
     }
 
     #_getHashRate () {
+        if (this.#_hashLogs.length == 0) {
+            return null;
+        }
         const now = Date.now();
         while (this.#_hashLogs.length > 0 && this.#_hashLogs[0].ts < now - 60_000) {
             this.#_hashLogs.shift();

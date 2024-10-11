@@ -29,16 +29,15 @@ var stakeTokens = null;
 
 async function __main() {
   if (process.argv[2] !== "--get" && process.argv[2] !== "--stake" && process.argv[2] !== "--withdraw") {
-    console.log("\x1b[31m Error! Expected --stake, --get or --withdraw command \x1b[0m");
+    console.log("\x1b[40m\x1b[31m Error! Expected --stake, --get or --withdraw command \x1b[0m");
     process.exit(1);
   }
   const argv = minimist(process.argv.slice(2), {boolean:['upfront', 'DEBUG'], string:['period', 'cliff']});
-  console.dir(argv);
   Logger.enabled = argv.DEBUG === true;
 
   signer = await solveSigner(web3);
   if (signer == null || signer == false) {
-    console.log("\x1b[41m ERROR \x1b[0m \x1b[31m Run 'node run.js --test' for details\x1b[0m");
+    console.log("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Run 'node run.js --test' for details\x1b[0m");
     process.exitCode = 1;
     return;
   }
@@ -51,13 +50,13 @@ async function __main() {
   // stake
   if (argv.stake !== undefined) {
     if (argv.stake !== true) {
-      console.error("\x1b[41m ERROR \x1b[0m \x1b[31m Wrong arguments! Expected '--stake --amount [value] --period [value]' \x1b[0m");
+      console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Wrong arguments! Expected '--stake --amount [value] --period [value]' \x1b[0m");
       process.exitCode = 1;
       return;
     }
     // --amount and --period are mandatory
     if (argv.amount === undefined || argv.period === undefined) {
-      console.error("\x1b[41m ERROR \x1b[0m \x1b[31m Missing --amount or --period argument! \x1b[0m");
+      console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Missing --amount or --period argument! \x1b[0m");
       process.exitCode = 1;
       return;
     }
@@ -69,7 +68,7 @@ async function __main() {
       try {
         period = parseIntOrThrow(argv.period);
       } catch (error) {
-        console.error("\x1b[41m ERROR \x1b[0m \x1b[31m Wrong value for --period argument! Expected integer values only! \x1b[0m");
+        console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Wrong value for --period argument! Expected integer values only! \x1b[0m");
         process.exitCode = 1;
         return;
       }
@@ -81,7 +80,7 @@ async function __main() {
       try {
         cliff = parseIntOrThrow(argv.cliff);
       } catch (error) {
-        console.error("\x1b[41m ERROR \x1b[0m \x1b[31m Wrong value for --cliff argument! Expected integer values only! \x1b[0m");
+        console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Wrong value for --cliff argument! Expected integer values only! \x1b[0m");
         process.exitCode = 1;
         return;
       }
@@ -110,7 +109,7 @@ async function getStake (param) {
   }
   if (typeof param == "number") {
     if (!Number.isInteger(param)) {
-      console.error("\x1b[41m ERROR \x1b[0m \x1b[31m Wrong value for --get argument! Expected integer values only! \x1b[0m");
+      console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Wrong value for --get argument! Expected integer values only! \x1b[0m");
       process.exitCode = 1;
       return;
     }
@@ -119,7 +118,7 @@ async function getStake (param) {
     process.exitCode = 0;
     return;
   }
-  console.error("\x1b[41m ERROR \x1b[0m \x1b[31m Wrong value for --get argument! \x1b[0m");
+  console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Wrong value for --get argument! \x1b[0m");
 }
 
 function stake (amountWei, period, upfront, cliff) {
@@ -156,13 +155,13 @@ async function withdraw (param) {
     //do nothing
   } else if (typeof param == "number") {
     if (!Number.isInteger(param)) {
-      console.error("\x1b[41m ERROR \x1b[0m \x1b[31m Wrong value for --withdraw argument! Expected integer values only! \x1b[0m");
+      console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Wrong value for --withdraw argument! Expected integer values only! \x1b[0m");
       process.exitCode = 1;
       return;
     }
     positions.push(param);
   } else {
-    console.error("\x1b[41m ERROR \x1b[0m \x1b[31m Wrong value for --withdraw argument! \x1b[0m");
+    console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m Wrong value for --withdraw argument! \x1b[0m");
   }
   console.log("proceeding...", positions);
 
