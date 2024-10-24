@@ -25,7 +25,7 @@ async function run(difficulty, random, p_address, num0, num1, salt) {
   const size = 2_000n;
   const sTime = Date.now();
   parentPort.postMessage({code:210, ts:sTime, hashCount:0n});
-  for (let i = num0; i <= num1; ++i) {
+  for (let i = num1; i >= num0; --i) {
     // generate the key
     let hexKey = numberToHex(i).slice(2);
     while (hexKey.length < difficulty) {

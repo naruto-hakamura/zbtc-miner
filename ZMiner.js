@@ -104,7 +104,7 @@ export class ZMiner extends EventEmitter {
             return null;
         }
         const now = Date.now();
-        while (this.#_hashLogs.length > 0 && this.#_hashLogs[0].ts < now - 60_000) {
+        while (this.#_hashLogs.length > 0 && this.#_hashLogs[0].ts < now - 30_000) {
             this.#_hashLogs.shift();
         }
         const dt = BigInt(now - this.#_hashLogs[0].ts);
@@ -125,14 +125,23 @@ export class ZMiner extends EventEmitter {
         let t = '';
         let symbols = ['/', '-', '\\'];
         const regex = /z/gi;
-        t = t + "(z)".repeat(Number(this.#_threads));
+        if (this.#_threads > 8n) {
+            if (this.#_threads > 20n) {
+                t = '(' + 'z'.repeat(Number(this.#_threads)) + ')';
+            } else {
+                t = '( ' + 'z '.repeat(Number(this.#_threads)) + ')';
+            }
+        } else {
+            t = "(z)".repeat(Number(this.#_threads));
+        }
         this.#_hashrateInterval = setInterval(() => {
             const hps = this.#_getHashRate();
+            const df = " \x1b[45m>" + this.#_difficulty + "<\x1b[0m";
             if (hps == null) {
-                process.stdout.write("[HRATE] " + t.replaceAll(regex, symbols[++count%3]) + " Hrate: \x1b[33m---\x1b[0m H/s");
+                process.stdout.write("[HRATE] CPUs " + t.replaceAll(regex, symbols[++count%3]) + " Hrate: \x1b[33m---\x1b[0m H/s" + df);
                 return;
             }
-            process.stdout.write("[HRATE] " + t.replaceAll(regex, symbols[++count%3]) + " Hrate: \x1b[33m" + hps.toLocaleString() + "\x1b[0m H/s");
+            process.stdout.write("[HRATE] CPUs " + t.replaceAll(regex, symbols[++count%3]) + " Hrate: \x1b[33m" + hps.toLocaleString() + "\x1b[0m H/s" + df);
         }, 1000);
     }
 
