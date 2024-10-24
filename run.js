@@ -176,6 +176,7 @@ function createKeySubmitter () {
     });
     _keySubmitter.on('key-posted', (data) => {
         console.log("\x1b[42m KEY VALIDATED \x1b[0m\x1b[36m %s\x1b[0m [%s]", data.key, new Date().toLocaleString());
+        _zMinerCtrl.incrementDifficulty();
     });
     _keySubmitter.on('out-of-gas', () => {
         console.log("\x1b[41m OUT OF GAS \x1b[0m \x1b[41m Deposit some AVAX to your address %s \x1b[0m", signer.address);

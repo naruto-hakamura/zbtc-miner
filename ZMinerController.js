@@ -85,8 +85,15 @@ export class ZMinerController extends EventEmitter {
         this.#_killZMiner();
     }
 
+    incrementDifficulty() {
+        this.#_currentMiningDifficulty++;
+        this.#_processCurrentDifficulty();
+        this.#_zMiner.updateDifficulty(this.#_currentMiningDifficulty);
+    }
+
     #_registerKeyValidatedEvent () {
         this.#_keyValidatedEvent.on('key-validated', (data) => {
+            Logger.Log('EVENT: key-validated', data);
             if (data.blockid != this.#_currentBlock.id) {
                 this.emit('non-fatal');
                 return;
