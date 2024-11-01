@@ -30,10 +30,20 @@ Node.js is a free, open-source, cross-platform JavaScript runtime environment.
 
 ![](/howto/howto_open_terminal.png)
 
-[d]. In the Terminal window type **node run.js --test** to start a quick test. This will guide you to setup a wallet first. Follow the instructions to complete the setup process
+[d]. In the Terminal window type **node run.js --airdrop** or **node run.js --test** to start a quick test. This will guide you to setup a wallet first. Follow the instructions to complete the setup process
 
 ![](/howto/cmd_test.png)
 
+
+## Airdrop - November 2024
+
+The first **ZBTC Airdrop** will award a total of 5000 ZBTC to the first 50 miners (100 ZBTC each). To join the competition, first you need to install the mining software (see the above [install instructions](#installation)) and to run the command **node run.js --airdrop** in the console to start the airdrop mining.
+
+> [!IMPORTANT]
+> To receive the airdrop you need to mine a block. This may take up to few hours on an average machine!
+
+> [!NOTE]
+> In addition to the **Airdrop Prize** you'll receive extra ZBTC for mining!
 
 ## Mining
 

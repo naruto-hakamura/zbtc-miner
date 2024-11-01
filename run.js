@@ -48,6 +48,8 @@ var argTest = false;
 var argSealBlockId = false;
 var argWallet = false;
 
+var isAirdropMining = false;
+
 const MIN_DIFFICULTY = 8;
 
 async function __main() {
@@ -63,7 +65,7 @@ async function __main() {
     //> signer
     signer = await solveSigner(web3);
     if (signer === false) {
-        const x = await setupWallet();
+        await setupWallet();
         return;
     }
     if (signer === null) {
@@ -105,8 +107,21 @@ async function __main() {
     });
 
     // >current block loader subscriptions
-    currentBlockLoader.on('new-block-loaded', (newBlockData) => {
+    currentBlockLoader.on('new-block-loaded', async (newBlockData) => {
         Logger.Log("currentBlockLoader.on - new-block-loaded", newBlockData);
+        if (isAirdropMining && argDifficulty < 9) {
+            try {
+                const airdropData = LocalVariable.get('airdrop');
+                Logger.Log('airdropData:', airdropData);
+                if (airdropData == 'nov24') {
+                    Logger.Log("Increase difficulty for airdrop");
+                    argDifficulty = 9;
+                }
+            } catch(error) {}
+            /*const balance = await loadBalance(argAddress);
+            Logger.Log("ZBTC balance = %s", web3.utils.fromWei(balance, 'ether'));
+            */
+        }
         timingCtrl.setNewBlock(newBlockData);
     });
     currentBlockLoader.on('block-updated', (currBlockData) => {
@@ -126,7 +141,13 @@ async function __main() {
         avaxBalanceGetter.removeAllListeners();
         Logger.Log("AVAX Balance:%o", avaxAmount);
         if (avaxAmount == 0n) {
-            console.log("\x1b[41m ERROR \x1b[0m \x1b[31m 0 AVAX for address %s. Consider deposit some AVAX (Avalanche C Chain) to your address to start mining! \x1b[0m", signer.address);
+            if (isAirdropMining) {
+                console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[40m\x1b[33m 0 AVAX for address %s \x1b[0m", signer.address);
+                console.log("\x1b[40m\x1b[33m OPTION 1. Get free AVAX for mining by sending me on X/Twitter a screenshot of this window (https://x.com/naruto_hakamura) \x1b[0m");
+                console.log("\x1b[40m\x1b[33m OPTION 2. Consider sending from MetaMask/Binance/etc at least 0.05 AVAX (Avalanche C Chain) to your address to start mining \x1b[0m");
+            } else {
+                console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[40m\x1b[33m 0 AVAX for address %s. Consider depositing some AVAX (Avalanche C Chain) to your address to start mining! \x1b[0m", signer.address);
+            }
             process.exit(1);
             return;
         }
@@ -135,7 +156,7 @@ async function __main() {
     });
     avaxBalanceGetter.on('error', (error) => {
         if (error instanceof ConnectionNotOpenError) {
-            console.log("\x1b[31m Connection not open! No internet connection or wrong Infura Api Key! \x1b[0m");
+            console.log("\x1b[33m Connection not open! No internet connection or wrong Infura Api Key! \x1b[0m");
         } else {
             console.log(error);
         }
@@ -144,11 +165,25 @@ async function __main() {
     avaxBalanceGetter.get(signer.address);
 }
 
+async function loadBalance(address) {
+    try {
+        const result = await tokenContract.methods.balanceOf(address).call();
+        return result;
+    } catch (error) {
+        console.log("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[33m Cannot load ZBTC balance \x1b[0m");
+        process.exit(1);
+    }
+}
+
 function loadTimestamp () {
     const _blockchainTimestampGetter = new BlockchainTimestampGetter(web3);
-    _blockchainTimestampGetter.on('loaded', (data) => {
+    _blockchainTimestampGetter.on('loaded', (timestamp) => {
         _blockchainTimestampGetter.removeAllListeners();
-        LocalSyncedTimestamp.sync(data);
+        if (isAirdropMining && timestamp > BigInt(Date.parse("2024-12-01T00:00:00")/1000)) {
+            console.log("\x1b[33m Airdrop not available! Type 'node run.js --mine' instead! \x1b[0m");
+            process.exit(1);
+        }
+        LocalSyncedTimestamp.sync(timestamp);
         Logger.Log("Local timestamp:%o", LocalSyncedTimestamp.getTimestamp());
         currentBlockLoader.loadCurrentBlock(0n);
     });
@@ -177,6 +212,11 @@ function createKeySubmitter () {
     _keySubmitter.on('key-posted', (data) => {
         console.log("\x1b[42m KEY VALIDATED \x1b[0m\x1b[36m %s\x1b[0m [%s]", data.key, new Date().toLocaleString());
         _zMinerCtrl.incrementDifficulty();
+        if (isAirdropMining) {
+            try {
+                LocalVariable.set('airdrop', 'nov24');
+            } catch (error){}
+        }
     });
     _keySubmitter.on('out-of-gas', () => {
         console.log("\x1b[41m OUT OF GAS \x1b[0m \x1b[41m Deposit some AVAX to your address %s \x1b[0m", signer.address);
@@ -263,21 +303,35 @@ function launchWalletService() {
         console.log("\x1b[33m=== IMPORT WALLET ===\x1b[0m");
         walletGen.importWallet();
         walletGen.once('success', async (wallet) => {
+            console.clear();
             console.log("\x1b[42m SUCCESS \x1b[0m Run 'node run.js --test' to proceed to the next step");
             await LocalVariable.setEncrypted("pkey", wallet.privateKey);
             process.exitCode = 0;
         });
         walletGen.once('error', (error) => {
-            console.log("\x1b[31m ERROR %s %s \x1b[0m", error.code || '', error.shortMessage || '');
+            console.clear();
+            console.log("\x1b[41m ERROR \x1b[0m \x1b[33m %s %s \x1b[0m", error.code || '', error.shortMessage || '');
+            console.log("Type 'node run.js --wallet' to restart the wallet import process")
             process.exitCode = 1;
         });
     });
+    if (isAirdropMining) {
+        console.clear();
+        setTimeout(() => {
+            walletGen.emit('generate');
+        }, 0);
+    }
 }
 async function setupWallet() {
-    console.log("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m No wallet found and SIGNER_PRIVATE_KEY not set in .env file! \x1b[0m");
-    console.log("\x1b[33m Option 1: Press keyboard [W] to start the wallet setup (recommended) \x1b[0m");
-    console.log("\x1b[33m Option 2: Press keyboard [I] to learn how to import a private key (for advanced users) \x1b[0m");
-    console.log("or press keyboard [Q] to quit");
+    if (isAirdropMining) {
+        console.log("\x1b[36m=== AIRDROP COMPETITION ===\x1b[0m");
+        console.log("\x1b[33m In order to join the airdop you need to setup a wallet first! Press keyboard [W] to continue or press keyboard [Q] to quit\x1b[0m");
+    } else {
+        console.log("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[31m No wallet found and SIGNER_PRIVATE_KEY not set in .env file! \x1b[0m");
+        console.log("\x1b[33m Option 1: Press keyboard [W] to start the wallet setup (recommended) \x1b[0m");
+        console.log("\x1b[33m Option 2: Press keyboard [I] to learn how to import a private key (for advanced users) \x1b[0m");
+        console.log("or press keyboard [Q] to quit");
+    }
     while(true) {
         const key = await awaitKeyPress();
         if (key === 'w') {
@@ -308,16 +362,15 @@ function runTest() {
         console.log("\x1b[36m BLOCKCHAIN CONNECTION ESTABLISHED! wait... \x1b[0m");
         console.log(" Your public address is:", signer.address);
         if (avaxAmount > 0n) {
-            console.log("\x1b[42m TEST SUCCESSFULL \x1b[0m type \x1b[36mnode run.js --mine\x1b[0m to start mining");
-        } else {
-            console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[40m\x1b[31m 0 AVAX for address %s. Consider deposit some AVAX (Avalanche C Chain) to your address to start mining! \x1b[0m", signer.address);
+            console.log("\x1b[42m TEST SUCCESSFULL \x1b[0m type \x1b[36mnode run.js --mine\x1b[0m or \x1b[36mnode run.js --airdrop\x1b[0m to start mining");
+        } else {            
+            console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[40m\x1b[33m 0 AVAX for address %s. Consider depositing some AVAX (Avalanche C Chain) to your address to start mining! \x1b[0m", signer.address);
         }
         process.exit(0);
-        
     });
     avaxBalanceGetter.on('error', (error) => {
         if (error instanceof ConnectionNotOpenError) {
-            console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[40m\x1b[31m No internet connection or wrong Infura Api Key! \x1b[0m");
+            console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[40m\x1b[33m No internet connection or wrong Infura Api Key! \x1b[0m");
         } else {
             console.log("\x1b[41m TEST FAILED \x1b[0m");
         }
@@ -335,12 +388,93 @@ function isValidSalt(salt){
     return true;
 }
 function processArgv() {
-    if (process.argv[2] !== "--mine" && process.argv[2] !== "--seal" && process.argv[2] !== "--test" && process.argv[2] !== "--wallet") {
+    if (process.argv[2] !== "--airdrop" && process.argv[2] !== "--mine" && process.argv[2] !== "--seal" && process.argv[2] !== "--test" && process.argv[2] !== "--wallet") {
         console.log("\x1b[40m\x1b[31m Error! Expected --mine, --seal, --test or --wallet command \x1b[0m");
         return false;
     }
     const argv = minimist(process.argv.slice(2), { string: ['address', 'salt'], boolean: ['DEBUG']});
     Logger.enabled = argv.DEBUG === true;
+
+    switch (process.argv[2]) {
+        case "--test":
+            argTest = true;
+            return true;
+        case "--wallet":
+            argWallet = true;
+            return true;
+
+        case "--mine":
+        case "--airdrop":
+            isAirdropMining = process.argv[2] === '--airdrop';
+            // --difficulty
+            if (argv.difficulty === undefined) {
+                argDifficulty = MIN_DIFFICULTY;
+            } else {
+                argDifficulty = parseInt(argv.difficulty);
+                if (argDifficulty < MIN_DIFFICULTY) {
+                    console.log("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[33m Difficulty too low! Min difficulty is 8 \x1b[0m");
+                    return false;
+                }
+            }
+            // --address
+            if (argv.address !== undefined && argv.address !== "") {
+                if (!isAddress(argv.address)) {
+                    console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[33m Provided --address argument is not a valid Avalanche/Ethereum address! \x1b[0m");
+                    return false;
+                }
+                argAddress = argv.address;
+            }
+            // --salt
+            if (argv.salt !== undefined) {
+                if (isAirdropMining === true) {
+                    console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[33m You cannot set a salt while airdrop mining! \x1b[0m");
+                    return false;
+                }
+                argSalt = argv.salt;
+                if (!isValidSalt(argSalt)) {
+                    console.log("\x1b[41m ERROR \x1b[0m \x1b[33m Provided --salt phase is invalid! \x1b[0m");
+                    return false;
+                }
+            }
+            if (isAirdropMining === true) {
+                argSalt = 'air';
+            }
+            // --threads
+            const cpuCnt = BigInt(cpus().length);
+            if (argv.threads === undefined) {
+                argThreads = cpuCnt / 2n;
+            } else if (argv.threads === 0) {
+                argThreads = cpuCnt;//max available threads
+            } else {
+                try {
+                    argThreads = BigInt(argv.threads);
+                } catch (error) {
+                    console.log("\x1b[41m ERROR \x1b[0m \x1b[33m Provided --threads argument is not a valid number! \x1b[0m");
+                    return false;
+                }
+                if (argThreads > cpuCnt) {
+                    console.log("\x1b[41m ERROR \x1b[0m Max %o threads allowed!", Number(cpuCnt));
+                    return false;
+                }
+            }
+            return true;
+
+        case "--seal":
+            let blockId = false;
+            try {
+                blockId = parseInt(argv.seal);
+            } catch (error) {
+                console.log("\x1b[40m\x1b[33m Seal Error! \x1b[0m");
+                process.exit(1);
+            }
+            if (isNaN(blockId)) {
+                console.log("\x1b[40m\x1b[33m Error: Seal is not a number! \x1b[0m");
+                process.exit(1);
+            }
+            argSealBlockId = blockId;
+            return true;
+    }
+    return false;
 
     // --seal
     if (argv.seal !== undefined) {
@@ -397,7 +531,7 @@ function processArgv() {
     // --threads
     const cpuCnt = BigInt(cpus().length);
     if (argv.threads === undefined) {
-        argThreads = 1n;
+        argThreads = cpuCnt / 2n;
     } else if (argv.threads === 0) {
         argThreads = cpuCnt;
     } else {
