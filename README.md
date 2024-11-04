@@ -30,10 +30,25 @@ Node.js is a free, open-source, cross-platform JavaScript runtime environment.
 
 ![](/howto/howto_open_terminal.png)
 
-[d]. In the Terminal window type **node run.js --test** to start a quick test. This will guide you to setup a wallet first. Follow the instructions to complete the setup process
+[d]. In the Terminal window type **node run.js --airdrop** or **node run.js --test** to start a quick test. This will guide you to setup a wallet first. Follow the instructions to complete the setup process
 
 ![](/howto/cmd_test.png)
 
+
+## Airdrop - November 2024
+
+The first **ZBTC Airdrop** will award a total of **5000 ZBTC** to the first 50 miners (100 ZBTC each).
+
+To join the competition, first you need to install the mining software (see the above [install instructions](#installation)) and then you have to find a key by running the command **node run.js --airdrop** in the console (follow the instructions to setup a wallet first).
+
+> [!IMPORTANT]
+> To find the first key you may need to run the miner a few hours!
+
+> [!NOTE]
+> The **Airdrop Prize** will be awarded in December!
+
+> [!NOTE]
+> In addition to the **Airdrop Prize** you'll receive extra ZBTC for mining!
 
 ## Mining
 
@@ -43,7 +58,7 @@ Node.js is a free, open-source, cross-platform JavaScript runtime environment.
 Type **node run.js --mine** to start mining.
 
 > [!NOTE]
-> Add the **--threads** argument to tell how many cpu threads will be fired up: **node run.js --mine --threads 2**
+> Add the **--threads** argument to tell how many cpu threads will be fired up: **node run.js --mine --threads 4**
 
 > [!NOTE]
-> Add the **--difficulty** argument to set the mining difficulty: **node run.js --mine --difficulty 10**
+> Add the **--difficulty** argument to set the mining difficulty: **node run.js --mine --difficulty 9**

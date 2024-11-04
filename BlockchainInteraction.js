@@ -51,9 +51,6 @@ export class KeySubmitter extends EventEmitter {
         this.#_queue.push(postData);
         this.#_next();
     }
-    updateBalance (avaxBalance) {
-        this.#_avaxBalance = avaxBalance;
-    }
     
     #_next () {
         if (this.#_disposed === true || this.#_flag === true || this.#_queue.length == 0) {
@@ -81,11 +78,7 @@ export class KeySubmitter extends EventEmitter {
                     return;
                 }
                 Logger.Log("GAS:::%s", gas);
-                if (gas > this.#_avaxBalance) {
-                    this.emit('low-gas');
-                    return;
-                }
-                tx.gas = gas;
+                tx.gas = gas * (100n + 5n) / 100n;
                 // proceed w the transaction
                 const signedTx = await this.#_web3.eth.accounts.signTransaction(tx, this.#_web3.eth.accounts.wallet[0].privateKey);
                 // Sending the transaction to the network
@@ -93,12 +86,6 @@ export class KeySubmitter extends EventEmitter {
                 .then(receipt => {
                     if (this.#_disposed === true) {
                         return;
-                    }
-                    if (receipt.cumulativeGasUsed != undefined && receipt.effectiveGasPrice != undefined) {
-                        const avaxUsed = receipt.cumulativeGasUsed * receipt.effectiveGasPrice;
-                        this.emit('avax-used', avaxUsed);
-                    } else {
-                        this.emit('avax-used', 0n);
                     }
                     this.#_flag = false;
                     this.emit('key-posted', data);
