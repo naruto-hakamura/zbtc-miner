@@ -23,11 +23,11 @@ var signer = null;
 var signerAvaxAmount = 0n;
 
 // token contract
-const tokenContractAddress = "0x8a640bde38533b0A3918a65bfc68446204d29963";
+const tokenContractAddress = "0x8a640bde38533b0A3918a65bfc68446204d29963";//"0x972E28A2Da323B6A4841639cF2ED8950f6EDF4ab";
 const tokenAbi = JSON.parse(readFileSync("./abi/ZBTC.json")).abi;
 const tokenContract = new web3.eth.Contract(tokenAbi, tokenContractAddress);
 
-const miningContractAddress = "0x4d52288Fd12CB8Ce68D7485Bf29970B4Dc84E0c4";
+const miningContractAddress = "0x4d52288Fd12CB8Ce68D7485Bf29970B4Dc84E0c4";//"0x3bEC456F29b15F96b701C24438190A6194c5fd26";
 const miningAbi = JSON.parse(readFileSync("./abi/Mining.json")).abi;
 //const miningContract = new web3.eth.Contract(miningAbi, miningContractAddress);
 
@@ -51,7 +51,7 @@ var argWallet = false;
 var isAirdropMining = false;
 const airdropEndDate = '2024-12-01T00:00:00';
 
-const MIN_DIFFICULTY = 5;//todo - put 8
+const MIN_DIFFICULTY = 8;
 
 async function __main() {
     if (processArgv() === false) {
@@ -144,7 +144,7 @@ async function __main() {
         if (avaxAmount == 0n) {
             if (isAirdropMining) {
                 console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[40m\x1b[33m 0 AVAX for address %s \x1b[0m", signer.address);
-                console.log("\x1b[40m\x1b[33m OPTION 1. Get free AVAX for mining by sending me on X/Twitter a screenshot of this window (https://x.com/naruto_hakamura) \x1b[0m");
+                console.log("\x1b[40m\x1b[33m OPTION 1. Get free AVAX for airdrop mining by sending me on X/Twitter a screenshot of this window (https://x.com/naruto_hakamura) \x1b[0m");
                 console.log("\x1b[40m\x1b[33m OPTION 2. Consider sending from MetaMask/Binance/etc at least 0.05 AVAX (Avalanche C Chain) to your address to start mining \x1b[0m");
             } else {
                 console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[40m\x1b[33m 0 AVAX for address %s. Consider depositing some AVAX (Avalanche C Chain) to your address to start mining! \x1b[0m", signer.address);

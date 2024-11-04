@@ -53,7 +53,7 @@ export function awaitKeyPress () {
 export async function solveSigner(web3) {
     let privateKey = null;
     let flag = false;
-    if (process.env.SIGNER_PRIVATE_KEY !== undefined && process.env.SIGNER_PRIVATE_KEY != '' && process.env.SIGNER_PRIVATE_KEY != 'paste_here_your_private_key') {
+    if (process.env.SIGNER_PRIVATE_KEY !== undefined && process.env.SIGNER_PRIVATE_KEY !== '' && process.env.SIGNER_PRIVATE_KEY !== 'paste_here_your_private_key') {
         privateKey = process.env.SIGNER_PRIVATE_KEY;
         flag = true;
     } else {
