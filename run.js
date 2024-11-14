@@ -6,10 +6,11 @@ import { cpus } from 'node:os';
 import { readFileSync } from "node:fs";
 import { CurrentBlockLoader } from './BlockLoader.js';
 import { ZMinerController } from './ZMinerController.js';
-import { AvaxBalanceGetter, BlockchainTimestampGetter, KeySubmitter, BlockSealer } from "./BlockchainInteraction.js";
-import { LocalSyncedTimestamp, LocalVariable, Logger, WalletGenerator, solveSigner, awaitKeyPress } from "./Utils.js";
+import { AvaxBalanceGetter, BlockchainTimestampGetter, KeySubmitter, BlockSealer, AirdropEvent } from "./BlockchainInteraction.js";
+import { LocalSyncedTimestamp, LocalVariable, Logger, WalletGenerator, solveSigner, awaitKeyPress, getUuid } from "./Utils.js";
 import { TimingController } from "./TimingController.js";
 import { emitKeypressEvents } from "node:readline";
+import { soliditySha3 } from 'web3-utils';
 
 dotenv.config();
 
@@ -49,13 +50,14 @@ var argSealBlockId = false;
 var argWallet = false;
 
 var isAirdropMining = false;
+var _airdropEvent = null;
 const airdropEndDate = '2024-12-01T00:00:00';
 
 const MIN_DIFFICULTY = 8;
 
 async function __main() {
-    if (processArgv() === false) {
-        process.exitCode = 1;
+    if (await processArgv() === false) {
+        process.exit(1);
         return;
     }
     //> wallet
@@ -90,11 +92,40 @@ async function __main() {
     }
     onSIGINT();
 
+    //> airdrop
+    if (isAirdropMining) {
+        _airdropEvent = new AirdropEvent(tokenContract, web3);
+        // check if the address is eligible for the Airdrop
+        const response = await _airdropEvent.Check({uuid: await getUuid(), address: argAddress});
+        if (response.err > 0) {
+            if (response.msg !== undefined) {
+                console.log("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[33m %s \x1b[0m", response.msg);
+            }
+            if (response.err === 3) {
+                console.log("Type 'node run.js --wallet' to generate a fresh wallet");
+            }
+            process.exit(1);
+        }
+        _airdropEvent.on('key-posted', (key) => {
+            console.log("\x1b[42m YOU ARE ELIGIBLE FOR THE AIRDROP! \x1b[0m");
+            console.log("\x1b[33m NOTE: Mining for another Airdrop from the same PC will disqualify you! \x1b[0m");
+            console.log(" Type 'node run.js --mine' to continue mining.");
+            LocalVariable.set('airdrop', 'nov24');
+            process.exit(0);
+        });
+        _airdropEvent.on('fatal', (msg) => {
+            console.log("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[33m %s \x1b[0m", msg);
+            process.exit(0);
+        });
+    }
+
     // >timing controller
     timingCtrl.on('run', (blockid) => {
         Logger.Log("timingController.on - run");
         createZMinerController(timingCtrl.getCurrentBlock());
-        createKeySubmitter();
+        if (isAirdropMining === false) {
+            createKeySubmitter();
+        }
         console.log(">>> Mining started for block \x1b[44m %i \x1b[0m ", Number(blockid));
     });
     timingCtrl.on('stop', (blockid) => {
@@ -110,16 +141,6 @@ async function __main() {
     // >current block loader subscriptions
     currentBlockLoader.on('new-block-loaded', async (newBlockData) => {
         Logger.Log("currentBlockLoader.on - new-block-loaded", newBlockData);
-        if (isAirdropMining && argDifficulty < 9) {
-            try {
-                const airdropData = LocalVariable.get('airdrop');
-                Logger.Log('airdropData:', airdropData);
-                if (airdropData == 'nov24') {
-                    Logger.Log("Increase difficulty for airdrop");
-                    argDifficulty = 9;
-                }
-            } catch(error) {}
-        }
         timingCtrl.setNewBlock(newBlockData);
     });
     currentBlockLoader.on('block-updated', (currBlockData) => {
@@ -142,14 +163,10 @@ async function __main() {
         avaxBalanceGetter.removeAllListeners();
         Logger.Log("AVAX Balance:%o", avaxAmount);
         if (avaxAmount == 0n) {
-            if (isAirdropMining) {
-                console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[40m\x1b[33m 0 AVAX for address %s \x1b[0m", signer.address);
-                console.log("\x1b[40m\x1b[33m OPTION 1. Get free AVAX for airdrop mining by sending me on X/Twitter a screenshot of this window (https://x.com/naruto_hakamura) \x1b[0m");
-                console.log("\x1b[40m\x1b[33m OPTION 2. Consider sending from MetaMask/Binance/etc at least 0.05 AVAX (Avalanche C Chain) to your address to start mining \x1b[0m");
-            } else {
+            if (isAirdropMining === false) {
                 console.log("\x1b[41m TEST FAILED \x1b[0m \x1b[40m\x1b[33m 0 AVAX for address %s. Consider depositing some AVAX (Avalanche C Chain) to your address to start mining! \x1b[0m", signer.address);
+                process.exit(1);
             }
-            process.exit(1);
         }
         signerAvaxAmount = avaxAmount;
         loadTimestamp();
@@ -218,12 +235,6 @@ function createKeySubmitter () {
     _keySubmitter.on('key-posted', (data) => {
         console.log("\x1b[42m KEY VALIDATED \x1b[0m\x1b[36m %s\x1b[0m [%s]", data.key, new Date().toLocaleString());
         _zMinerCtrl.incrementDifficulty();
-        if (isAirdropMining) {
-            console.log("\x1b[42m YOU ARE ELIGIBLE FOR THE AIRDROP. KEEP MINING! \x1b[0m");
-            try {
-                LocalVariable.set('airdrop', 'nov24');
-            } catch (error){}
-        }
     });
     _keySubmitter.on('out-of-gas', () => {
         console.log("\x1b[41m OUT OF GAS \x1b[0m \x1b[41m Deposit some AVAX to your address %s \x1b[0m", signer.address);
@@ -240,10 +251,14 @@ function createKeySubmitter () {
 function createZMinerController (p_currentBlock) {
     killZMinerController();
     _zMinerCtrl = new ZMinerController(p_currentBlock, argDifficulty, argAddress, argSalt, argThreads, miningAbi, miningContractAddress, process.env.INFURA_API_KEY);
-    _zMinerCtrl.on('key-found', (keyData) => {
+    _zMinerCtrl.on('key-found', async (keyData) => {
         Logger.Log("KEY::%o", keyData);
-        //_keySubmitter.updateBalance(signerAvaxAmount);
-        _keySubmitter.postKey(keyData);
+        if (isAirdropMining) {
+            keyData.uuid = await getUuid();
+            _airdropEvent.PostKey(keyData);
+        } else {
+            _keySubmitter.postKey(keyData);
+        }
     });
     _zMinerCtrl.on('reload-block', () => {
         Logger.Log("_zMinerCtrl.on - reload-block");
@@ -358,6 +373,7 @@ function runTest() {
         Logger.Log("AVAX Balance:%o", avaxAmount);
         console.log("\x1b[36m BLOCKCHAIN CONNECTION ESTABLISHED! wait... \x1b[0m");
         console.log(" Your public address is:", signer.address);
+        console.log(" AVAX balance: %s", web3.utils.fromWei(avaxAmount, 'ether'));
         if (avaxAmount > 0n) {
             console.log("\x1b[42m TEST SUCCESSFULL \x1b[0m type \x1b[36mnode run.js --mine\x1b[0m or \x1b[36mnode run.js --airdrop\x1b[0m to start mining");
         } else {            
@@ -384,7 +400,7 @@ function isValidSalt(salt){
     }
     return true;
 }
-function processArgv() {
+async function processArgv() {
     if (process.argv[2] !== "--airdrop" && process.argv[2] !== "--mine" && process.argv[2] !== "--seal" && process.argv[2] !== "--test" && process.argv[2] !== "--wallet") {
         console.log("\x1b[40m\x1b[31m Error! Expected --mine, --seal, --test or --wallet command \x1b[0m");
         return false;
@@ -403,9 +419,15 @@ function processArgv() {
         case "--mine":
         case "--airdrop":
             isAirdropMining = process.argv[2] === '--airdrop';
-            if (isAirdropMining && Date.now() > Date.parse(airdropEndDate)) {
-                console.log("\x1b[33m Airdrop not available! Type 'node run.js --mine' instead! \x1b[0m");
-                process.exit(1);
+            if (isAirdropMining) {
+                if (LocalVariable.get('airdrop') == 'nov24') {
+                    console.log("\x1b[33m You're already qualified for the Airdrop! Type 'node run.js --mine' instead! \x1b[0m");
+                    process.exit(1);
+                }
+                if (Date.now() > Date.parse(airdropEndDate)) {
+                    console.log("\x1b[33m Airdrop not available! Type 'node run.js --mine' instead! \x1b[0m");
+                    process.exit(1);
+                }
             }
             // --difficulty
             if (argv.difficulty === undefined) {
@@ -419,6 +441,10 @@ function processArgv() {
             }
             // --address
             if (argv.address !== undefined && argv.address !== "") {
+                if (isAirdropMining === true) {
+                    console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[33m You cannot set an address while mining for the Airdrop! \x1b[0m");
+                    return false;
+                }
                 if (!isAddress(argv.address)) {
                     console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[33m Provided --address argument is not a valid Avalanche/Ethereum address! \x1b[0m");
                     return false;
@@ -428,7 +454,7 @@ function processArgv() {
             // --salt
             if (argv.salt !== undefined) {
                 if (isAirdropMining === true) {
-                    console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[33m You cannot set a salt while airdrop mining! \x1b[0m");
+                    console.error("\x1b[41m ERROR \x1b[0m \x1b[40m\x1b[33m You cannot set a salt while mining for the Airdrop! \x1b[0m");
                     return false;
                 }
                 argSalt = argv.salt;
@@ -438,7 +464,13 @@ function processArgv() {
                 }
             }
             if (isAirdropMining === true) {
-                argSalt = 'air';
+                const uuid = await getUuid();
+                if (uuid == 'default-uuid') {
+                    console.log("\x1b[41m ERROR \x1b[0m \x1b[33m Invalid UUID. You are not eligible for the Airdrop! \x1b[0m");
+                    return false;
+                }
+                const uuidHash = soliditySha3({type: 'string', value: uuid });
+                argSalt = 'air_' + uuidHash.substring(2, 8);
             }
             // --threads
             const cpuCnt = BigInt(cpus().length);

@@ -34,11 +34,138 @@ export class BlockchainTimestampGetter extends EventEmitter {
     }
 }
 
+export class AirdropEvent extends EventEmitter {
+    #_isLocal = false;
+    #_baseURL = this.#_isLocal ? 'http://127.0.0.1:3001' : 'http://zbtc.onrender.com';
+    #_queue = [];
+    #_contract = null;
+    #_web3 = null;
+    #_running = false;
+
+    constructor(contract, web3) {
+        super();
+        this.#_contract = contract;
+        this.#_web3 = web3;
+    }
+    
+    async Check(data) {
+        const response = await this.#_check(data);
+        return response;
+    }
+    PostKey (keyData) {
+        this.#_queue.push(keyData);
+        this.#_next();
+    }
+    async #_next() {
+        if (this.#_running === true || this.#_queue.length == 0) {
+            return;
+        }
+        this.#_running = true;
+        const keyData = this.#_queue.pop();
+        try {
+            // #0. create the tx object
+            const method_abi = this.#_contract.methods.postKey(keyData.address, keyData.key, keyData.salt).encodeABI();
+            const tx = {
+                from: this.#_web3.eth.accounts.wallet[0].address,
+                to: this.#_contract.options.address,
+                data: method_abi,
+                value: '0',
+            };
+            
+            // #1. get gasPrice
+            const gasPrice = await this.#_web3.eth.getGasPrice();
+            tx.gasPrice = gasPrice * (100n + 5n) / 100n;//extra 5%
+            tx.gas = 0n;
+
+            // #2. Get wallet's avax balance
+            const walletAddress = this.#_web3.eth.accounts.wallet[0].address;
+            let initialAvaxBalance = await this.#_web3.eth.getBalance(walletAddress);
+            if (initialAvaxBalance === 0n || initialAvaxBalance < await this.#_estimateAvaxCostRoughly(tx)) {
+                // #. Request avax to complete the transaction
+                const reqResponse = await this.#_request(keyData);
+                if (reqResponse.err > 0) {
+                    if (reqResponse.msg !== undefined) {
+                        this.emit('fatal', reqResponse.msg);
+                    }
+                    return;
+                }
+                if (reqResponse.avaxSent > 0n) {
+                    tx.gasPrice = reqResponse.gasPrice;
+                    tx.gas = reqResponse.estimatedGas;
+                    let currentAvaxBalance = initialAvaxBalance;
+                    while (currentAvaxBalance < initialAvaxBalance + reqResponse.avaxSent) {
+                        await this.delay(10_000);
+                        currentAvaxBalance = await this.#_web3.eth.getBalance(walletAddress);
+                    }
+                }
+            }
+            if (tx.gas === 0n) {
+                // estimate gas
+                const estimatedGas = await this.#_web3.eth.estimateGas(tx);
+                tx.gas = estimatedGas;
+            }
+            // #3. sign the transaction
+            const signedTx = await this.#_web3.eth.accounts.signTransaction(tx, this.#_web3.eth.accounts.wallet[0].privateKey);
+
+            // #4. send the transaction to the network
+            const receipt = await this.#_web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+            this.emit('key-posted', keyData);
+        } catch (error) {
+            //try/wait the next key
+        } finally {
+            this.#_running = false;
+            setTimeout(() => {
+                this.#_next();
+            }, 500);
+        }
+    }
+
+    async #_estimateAvaxCostRoughly (tx) {
+        try{
+            // get the curent block
+            const cBlock = await this.#_contract.methods.getCurrentBlock().call();
+            const gas = cBlock.sealed_ === true ? 250_000n : 500_000n;
+            return gas * tx.gasPrice;
+        } catch(error) {
+            return 500_000n * tx.gasPrice;
+        }
+    }
+
+    async #_post(endpoint, data) {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                body: JSON.stringify(data),
+                headers: {
+                    'Content-type': 'application/json; charset=UTF-8',
+                },
+            });
+            return await response.json();
+        } catch (error) {
+            //console.log('ERR', error);
+            if (error.cause !== undefined && error.cause.code === 'ECONNREFUSED') {
+                return {err: 1, msg: "Please try again in 2 minutes"};
+            }
+            return {err: 1, msg: "Unexpected error! Please try again in 2 minutes"};
+        }
+    }
+    
+    async #_check (data) {
+        return await this.#_post(this.#_baseURL + '/airdrop/check', data)
+    }
+    async #_request (vars) {
+        return await this.#_post(this.#_baseURL + '/airdrop/request', vars);
+    }
+
+    delay (time) {
+        return new Promise(resolve => setTimeout(resolve, time));
+    }
+}
+
 export class KeySubmitter extends EventEmitter {
     #_contract = null;
     #_web3 = null;
     #_queue = [];
-    #_avaxBalance = 0n;
     #_flag = false;
     #_disposed = false;
 
