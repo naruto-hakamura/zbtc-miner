@@ -39,10 +39,13 @@ Node.js is a free, open-source, cross-platform JavaScript runtime environment.
 
 The first **ZBTC Airdrop** will award a total of **5000 ZBTC** to the first 50 miners (100 ZBTC each).
 
-To join the competition, first you need to install the mining software (see the above [install instructions](#installation)) and then you have to find a key by running the command **node run.js --airdrop** in the console (follow the instructions to setup a wallet first).
+To join the competition, first you need to install the **ZBTC Mining Software** (see the above [install instructions](#installation)) and then you have to find a key by running the command **node run.js --airdrop** in the console (follow the instructions to setup a wallet first).
 
 > [!IMPORTANT]
-> To find the first key you may need to run the miner a few hours!
+> You don't have to deposit any crypto to qualify for the airdrop. 
+
+> [!IMPORTANT]
+> To find the first key you may need to run the miner for a few hours!
 
 > [!NOTE]
 > The **Airdrop Prize** will be awarded in December!

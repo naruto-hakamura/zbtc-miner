@@ -53,7 +53,7 @@ var isAirdropMining = false;
 var _airdropEvent = null;
 const airdropEndDate = '2024-12-01T00:00:00';
 
-const MIN_DIFFICULTY = 6;
+const MIN_DIFFICULTY = 8;
 
 async function __main() {
     if (await processArgv() === false) {
